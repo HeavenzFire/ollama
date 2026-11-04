@@ -119,7 +119,7 @@ func TestRunCycleRejectsInactiveBody(t *testing.T) {
 
 func TestRunCycleRejectsOversizedPlan(t *testing.T) {
 	body := activeTestBody(t)
-	actions := make([]ProposedAction, MaxActionsPerCycle+1)
+	actions := make([]ProposedAction, DefaultMaxActionsPerCycle+1)
 	for i := range actions {
 		actions[i] = ProposedAction{
 			ID: "action-" + time.Duration(i+1).String(),
