@@ -27,7 +27,7 @@ The `agent` Go package introduces:
 - a policy gate between model-proposed actions and actuators;
 - a hard rule that approval-required actions are recorded but not executed.
 
-The runtime is dependency-injected. This keeps storage, model providers, policy, and actuators replaceable and testable. It does not yet expose HTTP routes, ship a durable production store, run background loops, or connect to physical devices.
+The runtime is dependency-injected. This keeps storage, model providers, policy, and actuators replaceable and testable. The default action budget is 16 per cycle and can be raised explicitly by the runtime configuration. It does not yet expose HTTP routes, ship a durable production store, run background loops, or connect to physical devices.
 
 ## Security invariants
 
