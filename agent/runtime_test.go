@@ -116,3 +116,58 @@ func TestRunCycleRejectsInactiveBody(t *testing.T) {
 		t.Fatal("inactive body must not execute actions")
 	}
 }
+
+func TestRunCycleRejectsOversizedPlan(t *testing.T) {
+	body := activeTestBody(t)
+	actions := make([]ProposedAction, MaxActionsPerCycle+1)
+	for i := range actions {
+		actions[i] = ProposedAction{
+			ID: "action-" + time.Duration(i+1).String(),
+			Tool: "file.write",
+			Capability: "files.write",
+			Arguments: json.RawMessage(`{"path":"x"}`),
+		}
+	}
+	actuator := &testActuator{}
+	runtime := Runtime{
+		Bodies: testBodyStore{body: body},
+		Memory: &testMemory{},
+		Cognition: testCognition{plan: Plan{Actions: actions}},
+		Policy: testPolicy{decision: AuthorizationAllow},
+		Actuator: actuator,
+	}
+	_, err := runtime.RunCycle(context.Background(), body.ID, Observation{
+		ID: "obs-limit", Source: "user", Kind: "request", Payload: json.RawMessage(`{}`),
+	})
+	if err == nil {
+		t.Fatal("oversized plan must be rejected")
+	}
+	if actuator.calls != 0 {
+		t.Fatalf("oversized plan executed %d actions", actuator.calls)
+	}
+}
+
+func TestRunCycleRejectsDuplicateActionIDs(t *testing.T) {
+	body := activeTestBody(t)
+	action := ProposedAction{
+		ID: "duplicate", Tool: "file.write", Capability: "files.write",
+		Arguments: json.RawMessage(`{"path":"x"}`),
+	}
+	actuator := &testActuator{}
+	runtime := Runtime{
+		Bodies: testBodyStore{body: body},
+		Memory: &testMemory{},
+		Cognition: testCognition{plan: Plan{Actions: []ProposedAction{action, action}}},
+		Policy: testPolicy{decision: AuthorizationAllow},
+		Actuator: actuator,
+	}
+	_, err := runtime.RunCycle(context.Background(), body.ID, Observation{
+		ID: "obs-duplicate", Source: "user", Kind: "request", Payload: json.RawMessage(`{}`),
+	})
+	if err == nil {
+		t.Fatal("duplicate action IDs must be rejected")
+	}
+	if actuator.calls != 0 {
+		t.Fatalf("duplicate action plan executed %d actions", actuator.calls)
+	}
+}
