@@ -9,7 +9,7 @@ import (
 
 const (
 	// MaxActionsPerCycle bounds the amount of work a single model plan can request.
-	MaxActionsPerCycle = 16
+	DefaultMaxActionsPerCycle = 16
 )
 
 // Observation is a normalized sensory event received from an adapter.
@@ -114,6 +114,15 @@ type Runtime struct {
 	Policy   Policy
 	Actuator Actuator
 	Now      func() time.Time
+	// MaxActionsPerCycle overrides the default per-cycle action budget when positive.
+	MaxActionsPerCycle int
+}
+
+func (r *Runtime) maxActionsPerCycle() int {
+	if r.MaxActionsPerCycle > 0 {
+		return r.MaxActionsPerCycle
+	}
+	return DefaultMaxActionsPerCycle
 }
 
 func (r *Runtime) now() time.Time {
@@ -167,8 +176,9 @@ func (r *Runtime) RunCycle(ctx context.Context, bodyID string, observation Obser
 	if err := r.append(ctx, body.ID, "plan", observation.ID+"/plan", plan); err != nil {
 		return CycleResult{}, fmt.Errorf("persist plan before action: %w", err)
 	}
-	if len(plan.Actions) > MaxActionsPerCycle {
-		return CycleResult{BodyID: body.ID, Summary: plan.Summary}, fmt.Errorf("plan has %d actions; maximum per cycle is %d", len(plan.Actions), MaxActionsPerCycle)
+	maxActions := r.maxActionsPerCycle()
+	if len(plan.Actions) > maxActions {
+		return CycleResult{BodyID: body.ID, Summary: plan.Summary}, fmt.Errorf("plan has %d actions; maximum per cycle is %d", len(plan.Actions), maxActions)
 	}
 	seenActionIDs := make(map[string]struct{}, len(plan.Actions))
 	for _, action := range plan.Actions {
