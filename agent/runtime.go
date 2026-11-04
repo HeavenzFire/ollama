@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+const (
+	// MaxActionsPerCycle bounds the amount of work a single model plan can request.
+	MaxActionsPerCycle = 16
+)
+
 // Observation is a normalized sensory event received from an adapter.
 // Payload is source data; adapters should minimize secrets and personal data.
 type Observation struct {
@@ -161,6 +166,19 @@ func (r *Runtime) RunCycle(ctx context.Context, bodyID string, observation Obser
 	}
 	if err := r.append(ctx, body.ID, "plan", observation.ID+"/plan", plan); err != nil {
 		return CycleResult{}, fmt.Errorf("persist plan before action: %w", err)
+	}
+	if len(plan.Actions) > MaxActionsPerCycle {
+		return CycleResult{BodyID: body.ID, Summary: plan.Summary}, fmt.Errorf("plan has %d actions; maximum per cycle is %d", len(plan.Actions), MaxActionsPerCycle)
+	}
+	seenActionIDs := make(map[string]struct{}, len(plan.Actions))
+	for _, action := range plan.Actions {
+		if action.ID == "" {
+			continue
+		}
+		if _, exists := seenActionIDs[action.ID]; exists {
+			return CycleResult{BodyID: body.ID, Summary: plan.Summary}, fmt.Errorf("plan contains duplicate action id %q", action.ID)
+		}
+		seenActionIDs[action.ID] = struct{}{}
 	}
 
 	result := CycleResult{BodyID: body.ID, Summary: plan.Summary}
