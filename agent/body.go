@@ -20,7 +20,7 @@ const (
 	StateStopped LifecycleState = "stopped"
 )
 
-// Body is the versionable identity and lifecycle record for an agent.
+// Body is the versionable identity and lifecycle record for an agent. A BodyStore implementation provides persistence.
 type Body struct {
 	ID           string         `json:"id"`
 	Name         string         `json:"name"`
